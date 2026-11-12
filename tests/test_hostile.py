@@ -112,6 +112,13 @@ def test_two_different_content_lengths_are_refused() -> None:
     assert asyncio.run(run()) == 400
 
 
+def test_an_empty_content_length_is_absent_not_malformed() -> None:
+    # PHP-FPM sends CONTENT_LENGTH="" on every bodiless request; a proxy in front
+    # of either stack can too. Refusing it would refuse every GET.
+    r = request(g.GuardMiddleware(echo), method="GET", headers={"content-length": ""}, body=b"")
+    assert r.status == 200
+
+
 def test_a_client_that_disconnects_mid_body_is_not_an_error() -> None:
     async def run() -> list[dict[str, Any]]:
         sent: list[dict[str, Any]] = []

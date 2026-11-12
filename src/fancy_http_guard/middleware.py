@@ -175,7 +175,8 @@ class GuardMiddleware:
             return envelope(413, "body_too_large", body_too_large(cap, actual), rid, self.rh, limit=limit)
 
         # 1. Content-Length, before one body byte is read.
-        lengths = [v for k, v in headers if k == "content-length"]
+        # An empty value is absent (SPEC 3.2): PHP-FPM sends one on every GET.
+        lengths = [v for k, v in headers if k == "content-length" and v != ""]
         if lengths:
             if len(set(lengths)) > 1 or not _DIGITS.match(lengths[0]):
                 await answer(envelope(400, "bad_request", status_defaults(400)[1], rid, self.rh))
