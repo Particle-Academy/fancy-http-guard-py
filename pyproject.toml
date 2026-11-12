@@ -1,0 +1,106 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "fancy-http-guard"
+version = "0.1.0"
+description = "ASGI request guards for Starlette and FastAPI, checked BEFORE the body is parsed (413, nesting depth, list length, finite numbers, workbook caps), plus one error envelope with a request id on every response. Zero runtime dependencies."
+readme = "README.md"
+# Matches every other Python package in the kit.
+requires-python = ">=3.11"
+# PEP 639: an SPDX expression, and NO license classifier.
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Particle Academy" }]
+keywords = [
+    "asgi",
+    "starlette",
+    "fastapi",
+    "middleware",
+    "request-guard",
+    "body-size",
+    "json",
+    "error-envelope",
+    "request-id",
+    "fancy",
+    "particle-academy",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Framework :: AsyncIO",
+    "Framework :: FastAPI",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Internet :: WWW/HTTP",
+    "Typing :: Typed",
+]
+
+# ZERO runtime dependencies, a design constraint rather than an accident.
+# ASGI is a protocol of three dicts. Starlette, FastAPI and holy-sheet are each
+# imported SOFTLY, only to recognise their exceptions and to hand FastAPI a
+# Response type it passes through. A CI job proves the suite runs without them.
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/Particle-Academy/fancy-http-guard-py"
+Issues = "https://github.com/Particle-Academy/fancy-http-guard-py/issues"
+Source = "https://github.com/Particle-Academy/fancy-http-guard-py"
+
+[dependency-groups]
+# starlette and fastapi are the frameworks this package EXISTS to integrate
+# with, as TEST dependencies only: the standing carve-out (owner, 2026-10-06).
+# Without FastAPI the suite cannot test the order FastAPI reads a body in, which
+# is the whole reason the guard is middleware. fancy-holy-sheet is first-party:
+# the workbook rows need the real reader to refuse a real file.
+test = ["pytest>=8.0", "starlette>=0.40", "fastapi>=0.115", "fancy-holy-sheet>=0.13.2"]
+lint = ["ruff>=0.16"]
+typecheck = ["mypy>=1.11"]
+dev = [{ include-group = "test" }, { include-group = "lint" }, { include-group = "typecheck" }]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/fancy_http_guard"]
+
+[tool.hatch.build.targets.sdist]
+include = ["/src", "/tests", "/README.md", "/CHANGELOG.md", "/AGENTS.md", "/LICENSE"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# importlib mode pairs with src-layout, so the tests exercise the INSTALLED
+# package. "../fancy-conformance/python/src" is the shared loader in the .agi
+# envelope's sibling checkout; CI points PYTHONPATH at its own pinned checkout.
+addopts = "--import-mode=importlib -ra"
+pythonpath = ["src", "tests", "../fancy-conformance/python/src"]
+filterwarnings = ["error"]
+
+[tool.ruff]
+line-length = 120
+src = ["src", "tests"]
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF", "N", "C4", "PT"]
+# Private control-flow signals (_Fault, _Stop) and ValidationFailed read as
+# outcomes; an Error suffix would say less.
+ignore = ["N818"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["PT011", "PT018", "E402", "N802", "N806", "RUF001"]
+"tests/sabotage.py" = ["E501"]
+
+[tool.mypy]
+python_version = "3.11"
+packages = ["fancy_http_guard"]
+mypy_path = "src"
+strict = true
+disallow_any_expr = false
+disallow_any_explicit = false
+
+# Soft optional imports: present in a consumer's app, never declared.
+[[tool.mypy.overrides]]
+module = ["starlette.*", "fastapi.*", "holy_sheet.*"]
+ignore_missing_imports = true
