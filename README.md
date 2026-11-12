@@ -9,10 +9,11 @@ from fastapi import FastAPI, Request
 import fancy_http_guard as guard
 
 app = FastAPI()
-guard.install(app)                                   # 1 MiB, depth 32, 10,000 members, finite numbers
+guard.install(app)  # 1 MiB, depth 32, 10,000 members, finite numbers
+
 
 @app.post("/imports")
-@guard.guard(profile="upload")                       # 10 MiB for this route only
+@guard.guard(profile="upload")  # 10 MiB for this route only
 async def imports(request: Request):
     data = await request.body()
     sheet = request.state.fancy_guard.read_workbook(data, field="file")
@@ -71,13 +72,18 @@ server sends, into one sentence for the UI.
 ```python
 guard.install(
     app,
-    limits={"maxBodyBytes": 1_048_576, "maxDepth": 32, "maxListLength": 10_000,
-            "maxErrors": 20, "finiteNumbers": True,
-            "workbook": {"maxRows": 100_000, "maxColumns": 1_000, "maxCells": 100_000}},
+    limits={
+        "maxBodyBytes": 1_048_576,
+        "maxDepth": 32,
+        "maxListLength": 10_000,
+        "maxErrors": 20,
+        "finiteNumbers": True,
+        "workbook": {"maxRows": 100_000, "maxColumns": 1_000, "maxCells": 100_000},
+    },
     profiles={"bulk": {"maxListLength": 100_000}},
-    routes={"import_rows": "bulk"},                   # by route name
+    routes={"import_rows": "bulk"},  # by route name
     request_id_header="x-request-id",
-    trust_incoming_request_id=False,                  # True only behind a proxy that sets it
+    trust_incoming_request_id=False,  # True only behind a proxy that sets it
 )
 ```
 
