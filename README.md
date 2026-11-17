@@ -20,6 +20,13 @@ async def imports(request: Request):
     ...
 ```
 
+<!-- fancy-agents-note:start -->
+> **For agents.** This package is not listed on the Fancy MCP catalog server
+> yet. The server, `https://ui.particle.academy/mcp` (streamable HTTP, no API key; MCP id
+> `fancy-ui`), lists the released Fancy packages with install commands and
+> docs. How an agent installs and uses this package is in [AGENTS.md](https://github.com/Particle-Academy/fancy-http-guard-py/blob/main/AGENTS.md).
+<!-- fancy-agents-note:end -->
+
 ## Why middleware
 
 FastAPI reads the body BEFORE it resolves dependencies, so a dependency that

@@ -1,56 +1,73 @@
-# AGENTS.md — fancy-http-guard (Python)
+# Using fancy-http-guard (Python) — guide for agents
 
-ASGI request guards and the error envelope. `CLAUDE.md` is a symlink to this
-file. Process rules live in the envelope's `RULES.md` and are not repeated here.
+How an agent installs and uses this package in a consumer app. What the package
+is, is in [README.md](./README.md). Notes for working ON this repo's code are in
+[CONTRIBUTING.md](./CONTRIBUTING.md).
 
-## The contract
-
-fancy-conformance `suites/http/SPEC.md` (CC-fancy-0031), sections 3 to 5, and
-the `http/request-guards` table, plus the sentence helpers of
-`http/error-envelope`. The Laravel guard (`particle-academy/fancy-http-guard`)
-runs the same rows. **Behaviour changes in the spec and its rows first.**
-
-## The rules that shape this repo
-
-- **Zero runtime dependencies.** Starlette, FastAPI and holy-sheet are SOFT
-  imports: `envelope.py` looks for their exception classes, `install()` imports
-  Starlette because only a Starlette app can call it, and `read_workbook` imports
-  holy-sheet when called. The `no-dependencies` CI job runs the whole suite
-  without Starlette or FastAPI.
-- **Middleware, never a dependency.** FastAPI reads the body before resolving
-  dependencies. The guard must see `receive` first.
-- **Refuse unread.** A declared length over the cap answers without calling
-  `receive()` once (`test_a_declared_oversize_body_is_refused_without_calling_receive`).
-  The bounded read pulls at most `maxBodyBytes + 1` bytes.
-- **An overflow wins, even if the framework swallowed it.** FastAPI wraps any
-  exception raised while reading the body into a 400 HTTPException, so the
-  counting receive also sets a flag, and `guarded_send` replaces whatever the app
-  answers with the 413.
-- **Exception text is never echoed.** A crash is a fixed 500 in debug mode too;
-  only `HttpError(public=True)` puts a 5xx sentence of the app's own into a
-  response. holy-sheet's refusal is rebuilt from its numbers.
-- **Settings are validated at construction** (`settings()`), with the contract's
-  camelCase names, shared with Laravel's config and holy-sheet's `limits`.
-
-## Testing
+## Install
 
 ```bash
-python -m venv .venv && .venv/Scripts/python -m pip install -e . --group dev
-pytest                      # the conformance tables + hostile cases
-python tests/sabotage.py    # 16 mutations, every one must be CAUGHT
-ruff check . && ruff format --check . && mypy
+pip install fancy-http-guard
 ```
 
-- **The tables come from a fancy-conformance checkout**, never PyPI (it is not
-  published there, by owner ruling). Locally that is the envelope's sibling
-  `../fancy-conformance` (pytest `pythonpath`). CI checks it out at
-  `ref: v<PINNED_SUITE_VERSION>` and sets `PYTHONPATH`. Move the pin in
-  `tests/test_conformance.py` and the ref in `ci.yml` together.
-- **`tests/asgi.py` counts what the app pulled.** It offers the body in fixed
-  chunks, which is how "refused unread" and "bounded" are measured rather than
-  claimed. No httpx: a forty-line driver removes the need.
-- **No `from __future__ import annotations` in a test module that defines
-  FastAPI endpoints inside functions.** FastAPI resolves string annotations
-  against module globals, and a locally imported `Request` becomes a required
-  query field. Every row then reads 422.
-- On Windows, set `PYTHONIOENCODING=utf-8`, or printing a summary fails on cp1252.
+- **Not published to PyPI yet** (version `0.1.0` in the repo). The command above
+  works once it is.
+- Python `>=3.11`. Zero runtime dependencies: Starlette, FastAPI and
+  holy-sheet (`fancy-holy-sheet`, for workbooks) are used when present, never
+  required.
+
+## Find it on the Fancy MCP server
+
+Not listed on the Fancy MCP catalog server
+(`https://ui.particle.academy/mcp`, MCP id `fancy-ui`) yet; it appears there
+once published. Look for it later with `search-backend-packages` (stack
+`python`). The Laravel twin is `particle-academy/fancy-http-guard`, and the
+browser side that turns the envelope into a sentence is
+`@particle-academy/fancy-http-errors`.
+
+## API essentials
+
+```python
+from fastapi import FastAPI, Request
+import fancy_http_guard as guard
+
+app = FastAPI()
+guard.install(app)                       # 1 MiB, depth 32, 10,000 members, finite numbers
+
+@app.post("/imports")
+@guard.guard(profile="upload")           # 10 MiB for this route only
+async def imports(request: Request):
+    data = await request.body()
+    sheet = request.state.fancy_guard.read_workbook(data, field="file")
+```
+
+- `install(app, limits=..., profiles=..., routes=..., request_id_header=...,
+  trust_incoming_request_id=False)` for a Starlette or FastAPI app. Limits use
+  the contract's camelCase names: `maxBodyBytes`, `maxDepth`, `maxListLength`,
+  `maxErrors`, `finiteNumbers`, `workbook` (`maxRows`, `maxColumns`,
+  `maxCells`).
+- Per route: `@guard.guard(profile="upload")`, `@guard.guard(maxDepth=8)`, or the
+  `routes` mapping by route name.
+- Any other ASGI app: `GuardMiddleware(app, limits=...)`, raising `HttpError`
+  and `ValidationFailed([{"field", "message"}])` instead of a framework's
+  exceptions.
+- Every error is one envelope: `{error, message, limit?, errors?, retryAfter?,
+  requestId}`, with the request id also in `X-Request-Id` on every response.
+- `request.state.fancy_guard.workbook_limits` is holy-sheet's `limits` option
+  for the route; `read_workbook(data, limits, field=...)` reads under them.
+
+## Traps
+
+- **It is middleware on purpose.** A FastAPI dependency that checks the body
+  runs after the parse it was meant to prevent; do not move the checks into
+  dependencies.
+- **A crash is a fixed 500, debug mode included.** The exception goes to the
+  `fancy_http_guard` logger under the request id, never to the response. For a
+  deliberate 5xx sentence, raise `HttpError(503, "...", error="maintenance",
+  public=True)`.
+- **Responses your app returns are never rewritten**; only the request-id header
+  is added.
+- **A bad setting fails at startup**, not on the first request.
+- `trust_incoming_request_id=True` only behind a proxy that sets the header.
+- Python's `json.loads` accepts `NaN` and `Infinity`; the guard refuses them
+  (`not_finite`) while `finiteNumbers` is on.
