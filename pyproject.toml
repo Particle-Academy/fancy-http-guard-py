@@ -81,6 +81,10 @@ filterwarnings = ["error"]
 line-length = 120
 src = ["src", "tests"]
 target-version = "py311"
+# CI checks fancy-conformance out INSIDE the workspace (ci.yml, path
+# .fancy-conformance) so the tables are read from a pinned tag. It is another
+# repo's code, linted by its own CI, and must not be linted here.
+extend-exclude = [".fancy-conformance"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "RUF", "N", "C4", "PT"]

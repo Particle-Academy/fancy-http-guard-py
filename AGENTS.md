@@ -32,10 +32,11 @@ from fastapi import FastAPI, Request
 import fancy_http_guard as guard
 
 app = FastAPI()
-guard.install(app)                       # 1 MiB, depth 32, 10,000 members, finite numbers
+guard.install(app)  # 1 MiB, depth 32, 10,000 members, finite numbers
+
 
 @app.post("/imports")
-@guard.guard(profile="upload")           # 10 MiB for this route only
+@guard.guard(profile="upload")  # 10 MiB for this route only
 async def imports(request: Request):
     data = await request.body()
     sheet = request.state.fancy_guard.read_workbook(data, field="file")
