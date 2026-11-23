@@ -27,7 +27,7 @@ from fancy_http_guard.sentences import format_bytes, format_duration, sanitise
 # The tag CI checks out (.github/workflows/ci.yml). Move the two together, after
 # re-running the tables against the new checkout; test_ci_ref_is_the_pin fails
 # otherwise.
-PINNED_SUITE_VERSION = "0.48.0"
+PINNED_SUITE_VERSION = "0.62.0"
 REPO = Path(__file__).resolve().parent.parent
 
 

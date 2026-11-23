@@ -13,6 +13,7 @@ promising otherwise until 1.0.
 ### Changed
 
 - CI: re-pin org third-party allowlist to 2614224
+- Conformance fixtures 0.62.0: the `http/error-envelope` and `http/request-guards` rows are now pinned at fancy-conformance 0.62.0 (was 0.48.0), in both CI checkout refs and `PINNED_SUITE_VERSION`. Test-only; no runtime change, nothing to do.
 
 ## [0.1.0] - 2026-11-18
 
