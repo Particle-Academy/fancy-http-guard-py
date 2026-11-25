@@ -265,7 +265,9 @@ class GuardMiddleware:
             if overflow["hit"]:
                 await answer(too_large(None))
                 return
-            await answer(render(exc, request_id=rid, request_id_header=self.rh))
+            await answer(
+                render(exc, request_id=rid, request_id_header=self.rh, max_message_length=lim["maxMessageLength"])
+            )
 
     def _scan(self, data: bytes, lim: dict[str, Any], rid: str) -> Rendered | None:
         malformed = envelope(400, "malformed_body", MALFORMED, rid, self.rh)

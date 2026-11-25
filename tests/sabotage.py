@@ -75,6 +75,26 @@ MUTATIONS = [
         'return envelope(413, "workbook_too_large", s.workbook_sentence(limit), rid, rh, limit=limit)',
         'return envelope(413, "workbook_too_large", str(exc), rid, rh, limit=limit)',
     ),
+    # CC-fancy-0063: the public message length.
+    (
+        "ignores the maxMessageLength setting",
+        "middleware.py",
+        'max_message_length=lim["maxMessageLength"]',
+        "max_message_length=300",
+    ),
+    ("no bound on the setting", "settings.py", "if n > MESSAGE_LENGTH_BOUND:", "if False:"),
+    (
+        "no bound on a per-error override",
+        "envelope.py",
+        "return max(1, min(int(chosen), MESSAGE_LENGTH_BOUND))",
+        "return max(1, int(chosen))",
+    ),
+    (
+        "ignores an item's own maxMessageLength",
+        "envelope.py",
+        'mx = _length(route, e.get("maxMessageLength"))',
+        "mx = route",
+    ),
 ]
 
 

@@ -17,6 +17,7 @@ DEFAULTS: dict[str, Any] = {
     "maxListLength": 10_000,
     "maxErrors": 20,
     "finiteNumbers": True,
+    "maxMessageLength": 300,
     "workbook": {"maxRows": 100_000, "maxColumns": 1_000, "maxCells": 100_000},
 }
 
@@ -26,6 +27,11 @@ PROFILES: dict[str, dict[str, Any]] = {
 }
 
 _INTS = ("maxBodyBytes", "maxDepth", "maxListLength", "maxErrors")
+
+# The hard bound on a public message, in code points (SPEC 3.1, CC-fancy-0063).
+# No setting and no per-error override sends more, so a misconfiguration cannot
+# send unbounded text.
+MESSAGE_LENGTH_BOUND = 4000
 _WORKBOOK = ("maxRows", "maxColumns", "maxCells")
 
 
@@ -39,6 +45,14 @@ def _positive(name: str, value: Any) -> int:
     return value
 
 
+def message_length(name: str, value: Any) -> int:
+    """A message length setting: a positive integer no greater than the bound."""
+    n = _positive(name, value)
+    if n > MESSAGE_LENGTH_BOUND:
+        raise _refuse(f"{name} must be at most {MESSAGE_LENGTH_BOUND}, got {value!r}")
+    return n
+
+
 def settings(limits: Mapping[str, Any] | None = None, base: Mapping[str, Any] | None = None) -> dict[str, Any]:
     """The defaults (or ``base``) overridden key by key. A bad key or value is
     refused HERE, at construction, never on the first request."""
@@ -46,6 +60,8 @@ def settings(limits: Mapping[str, Any] | None = None, base: Mapping[str, Any] | 
     for key, value in (limits or {}).items():
         if key in _INTS:
             out[key] = _positive(key, value)
+        elif key == "maxMessageLength":
+            out[key] = message_length(key, value)
         elif key == "finiteNumbers":
             if not isinstance(value, bool):
                 raise _refuse(f"finiteNumbers must be true or false, got {value!r}")
@@ -58,7 +74,8 @@ def settings(limits: Mapping[str, Any] | None = None, base: Mapping[str, Any] | 
                     raise _refuse(f"unknown workbook limit {wk!r}; known: {', '.join(_WORKBOOK)}")
                 out["workbook"][wk] = _positive(f"workbook.{wk}", wv)
         else:
-            raise _refuse(f"unknown limit {key!r}; known: {', '.join((*_INTS, 'finiteNumbers', 'workbook'))}")
+            known = ", ".join((*_INTS, "finiteNumbers", "maxMessageLength", "workbook"))
+            raise _refuse(f"unknown limit {key!r}; known: {known}")
     return out
 
 

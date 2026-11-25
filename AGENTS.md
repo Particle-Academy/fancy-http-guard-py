@@ -45,8 +45,14 @@ async def imports(request: Request):
 - `install(app, limits=..., profiles=..., routes=..., request_id_header=...,
   trust_incoming_request_id=False)` for a Starlette or FastAPI app. Limits use
   the contract's camelCase names: `maxBodyBytes`, `maxDepth`, `maxListLength`,
-  `maxErrors`, `finiteNumbers`, `workbook` (`maxRows`, `maxColumns`,
-  `maxCells`).
+  `maxErrors`, `finiteNumbers`, `maxMessageLength`, `workbook` (`maxRows`,
+  `maxColumns`, `maxCells`).
+- `maxMessageLength` (default 300, at most 4,000; more is refused at startup) is
+  how many code points of the app's own sentence a public message keeps. For one
+  long data-built refusal, set it on that error alone:
+  `HttpError(422, text, error="rows_refused", public=True, max_message_length=2000)`
+  or a `ValidationFailed` item's `"maxMessageLength": 2000`. An override over
+  4,000 counts as 4,000 and reaches no other error or item.
 - Per route: `@guard.guard(profile="upload")`, `@guard.guard(maxDepth=8)`, or the
   `routes` mapping by route name.
 - Any other ASGI app: `GuardMiddleware(app, limits=...)`, raising `HttpError`
@@ -69,6 +75,11 @@ async def imports(request: Request):
 - **Responses your app returns are never rewritten**; only the request-id header
   is added.
 - **A bad setting fails at startup**, not on the first request.
+- **A longer message is not an unsanitised one.** `maxMessageLength` and
+  `max_message_length` change the length only: control characters are still
+  stripped, a crash is still the fixed 500 and a non-public 5xx message is
+  still never shown. Never put a path, a query or a traceback in a public
+  sentence on the strength of a raised limit.
 - `trust_incoming_request_id=True` only behind a proxy that sets the header.
 - Python's `json.loads` accepts `NaN` and `Infinity`; the guard refuses them
   (`not_finite`) while `finiteNumbers` is on.

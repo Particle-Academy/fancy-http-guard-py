@@ -85,6 +85,7 @@ guard.install(
         "maxListLength": 10_000,
         "maxErrors": 20,
         "finiteNumbers": True,
+        "maxMessageLength": 300,  # code points in a public message; at most 4,000
         "workbook": {"maxRows": 100_000, "maxColumns": 1_000, "maxCells": 100_000},
     },
     profiles={"bulk": {"maxListLength": 100_000}},
@@ -97,6 +98,26 @@ guard.install(
 A bad key or value is refused when the app starts, never on the first request.
 Per route: `@guard.guard(profile="upload")`, `@guard.guard(maxDepth=8)`, or the
 `routes` mapping. Mounted sub-apps are resolved.
+
+### Long error messages
+
+`maxMessageLength` (default 300) is how many code points of YOUR sentence a
+public message keeps: a 4xx message, a validation item, or a public 5xx. Longer
+ones keep 299 and gain an ellipsis. Raise it app-wide, per profile, or per route
+(`@guard.guard(maxMessageLength=2000)`). It cannot go above 4,000: a larger
+value is refused at startup.
+
+For one long, data-built refusal, raise the limit on that error alone instead:
+
+```python
+raise guard.HttpError(422, sentence, error="rows_refused", public=True, max_message_length=2000)
+raise guard.ValidationFailed([{"field": "rows", "message": sentence, "maxMessageLength": 2000}])
+```
+
+An override above 4,000 counts as 4,000, and it applies to that error or item
+only. **Only the length changes.** Control characters are still stripped at any
+length, a crash is still the fixed 500, and a non-public 5xx still never shows
+its message.
 
 Without Starlette, wrap any ASGI app: `GuardMiddleware(app, limits=...)`. Raise
 `HttpError` and `ValidationFailed([{"field", "message"}])` there instead of a

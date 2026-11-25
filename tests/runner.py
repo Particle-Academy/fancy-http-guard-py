@@ -148,7 +148,16 @@ def build_exception(t: dict[str, Any], *, starlette_branch: bool) -> BaseExcepti
             return RequestValidationError(errors)
         return g.ValidationFailed([{"field": e["field"], "message": e["message"]} for e in t["errors"]])
     if kind == "public":
-        return g.HttpError(t["status"], t["message"], error=t["error"], public=True, retry_after=t.get("retryAfter"))
+        return g.HttpError(
+            t["status"],
+            t["message"],
+            error=t["error"],
+            public=True,
+            retry_after=t.get("retryAfter"),
+            max_message_length=t.get("maxMessageLength"),
+        )
+    if kind == "failed":  # the package's own ValidationFailed, on both branches
+        return g.ValidationFailed(t["errors"])
     if kind == "workbook":
         from holy_sheet.exceptions import ArchiveRefused, ReadLimitExceeded
 
@@ -162,6 +171,7 @@ def render_app(inp: dict[str, Any], *, starlette_branch: bool) -> Any:
     t = inp["throw"]
     config = inp.get("config", {})
     kw = {
+        "limits": inp.get("limits", {}),
         "request_id_header": config.get("requestIdHeader", "x-request-id"),
         "trust_incoming_request_id": config.get("trustIncomingRequestId", False),
     }

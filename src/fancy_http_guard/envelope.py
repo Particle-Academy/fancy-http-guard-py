@@ -23,6 +23,7 @@ from typing import Any
 
 from . import sentences as s
 from .errors import HttpError, ValidationFailed
+from .settings import MESSAGE_LENGTH_BOUND
 
 CODE = re.compile(r"^[a-z][a-z0-9_]{0,63}\Z")
 _DELTA = re.compile(r"^[0-9]{1,10}\Z")
@@ -78,14 +79,23 @@ def _retry(headers: Mapping[str, str] | None) -> int | None:
     return None
 
 
-def _http(status: int, message: str | None, headers: Mapping[str, str] | None, rid: str, rh: str) -> Rendered:
+def _length(route: int, own: Any = None) -> int:
+    """SPEC 4.0: the error's own length when it has one, else the route's;
+    never more than the bound, whichever it came from."""
+    chosen = own if isinstance(own, int) and not isinstance(own, bool) and own >= 1 else route
+    return max(1, min(int(chosen), MESSAGE_LENGTH_BOUND))
+
+
+def _http(
+    status: int, message: str | None, headers: Mapping[str, str] | None, rid: str, rh: str, mx: int = 300
+) -> Rendered:
     code, fallback = s.status_defaults(status)
     retry = _retry(headers)
     if status >= 500:
         return envelope(status, code, s.server_sentence(status, retry, rid), rid, rh, retry_after=retry)
     if status == 429:
         return envelope(429, code, s.rate_limited(retry), rid, rh, retry_after=retry)
-    text = s.sanitise(message) if isinstance(message, str) else ""
+    text = s.sanitise(message, mx) if isinstance(message, str) else ""
     if status == 422:
         return validation([{"error": "invalid", "message": text or fallback}], rid, rh)
     return envelope(status, code, text or fallback, rid, rh, retry_after=retry)
@@ -116,9 +126,22 @@ def holy_sheet_limit(exc: BaseException) -> dict[str, Any] | None:
     return {"name": name, "max": mx, "actual": actual}
 
 
-def render(exc: BaseException, *, request_id: str, request_id_header: str = "x-request-id") -> Rendered:
-    """What an exception becomes. Anything unrecognised is a crash."""
+def render(
+    exc: BaseException,
+    *,
+    request_id: str,
+    request_id_header: str = "x-request-id",
+    max_message_length: int = 300,
+) -> Rendered:
+    """What an exception becomes. Anything unrecognised is a crash.
+
+    ``max_message_length`` is the route's ``maxMessageLength`` (SPEC 4.0); an
+    error's own override replaces it, and neither passes 4000. Only the length
+    changes: the message is sanitised, and a crash or a non-public 5xx never
+    shows its text, whatever the length.
+    """
     rid, rh = request_id, request_id_header
+    route = _length(max_message_length)
 
     if isinstance(exc, HttpError):
         if exc.public:
@@ -127,9 +150,10 @@ def render(exc: BaseException, *, request_id: str, request_id_header: str = "x-r
                 return crash(rid, rh)
             ok = isinstance(exc.retry_after, int) and exc.retry_after >= 0
             retry = exc.retry_after if ok else _retry(exc.headers)
-            text = s.sanitise(exc.message or "") or s.status_defaults(exc.status)[1]
+            mx = _length(route, exc.max_message_length)
+            text = s.sanitise(exc.message or "", mx) or s.status_defaults(exc.status)[1]
             return envelope(exc.status, exc.error, text, rid, rh, retry_after=retry)
-        r = _http(exc.status, exc.message, exc.headers, rid, rh)
+        r = _http(exc.status, exc.message, exc.headers, rid, rh, _length(route, exc.max_message_length))
         if exc.error is not None and CODE.match(exc.error) and exc.status < 500 and r.status != 422:
             r.body["error"] = exc.error
         return r
@@ -138,7 +162,8 @@ def render(exc: BaseException, *, request_id: str, request_id_header: str = "x-r
         items = []
         for e in exc.errors:
             item: dict[str, Any] = {"error": e.get("error") if CODE.match(str(e.get("error", ""))) else "invalid"}
-            item["message"] = s.sanitise(str(e.get("message", ""))) or s.status_defaults(422)[1]
+            mx = _length(route, e.get("maxMessageLength"))
+            item["message"] = s.sanitise(str(e.get("message", "")), mx) or s.status_defaults(422)[1]
             if isinstance(e.get("field"), str) and e["field"]:
                 item["field"] = e["field"]
             items.append(item)
@@ -153,7 +178,7 @@ def render(exc: BaseException, *, request_id: str, request_id_header: str = "x-r
                 detail = None  # Starlette's default detail: the reason phrase is no message
         except ValueError:
             pass
-        return _http(status, detail, getattr(exc, "headers", None), rid, rh)
+        return _http(status, detail, getattr(exc, "headers", None), rid, rh, route)
 
     request_validation = _soft("fastapi.exceptions", "RequestValidationError")
     if request_validation is not None and isinstance(exc, request_validation):
@@ -162,7 +187,8 @@ def render(exc: BaseException, *, request_id: str, request_id_header: str = "x-r
             loc = list(e.get("loc", ()))
             if loc and loc[0] in ("body", "query", "path", "header", "cookie"):
                 loc = loc[1:]
-            item = {"error": "invalid", "message": s.sanitise(str(e.get("msg", ""))) or s.status_defaults(422)[1]}
+            msg = s.sanitise(str(e.get("msg", "")), route)
+            item = {"error": "invalid", "message": msg or s.status_defaults(422)[1]}
             path = ".".join(str(p) for p in loc)
             if path:
                 item["field"] = path

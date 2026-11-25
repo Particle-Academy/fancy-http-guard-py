@@ -42,7 +42,7 @@ runs the same rows. **Behaviour changes in the spec and its rows first.**
 ```bash
 python -m venv .venv && .venv/Scripts/python -m pip install -e . --group dev
 pytest                      # the conformance tables + hostile cases
-python tests/sabotage.py    # 16 mutations, every one must be CAUGHT
+python tests/sabotage.py    # 20 mutations, every one must be CAUGHT
 ruff check . && ruff format --check . && mypy
 ```
 

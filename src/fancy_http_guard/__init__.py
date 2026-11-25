@@ -22,13 +22,14 @@ from typing import Any
 from .envelope import Rendered, render
 from .errors import HttpError, ValidationFailed
 from .middleware import GuardMiddleware, GuardState, guard
-from .settings import DEFAULTS, PROFILES, settings, workbook_limits
+from .settings import DEFAULTS, MESSAGE_LENGTH_BOUND, PROFILES, settings, workbook_limits
 from .workbook import read_workbook
 
 __version__ = "0.1.0"
 
 __all__ = [
     "DEFAULTS",
+    "MESSAGE_LENGTH_BOUND",
     "PROFILES",
     "GuardMiddleware",
     "GuardState",
@@ -64,8 +65,11 @@ def install(
     rh = request_id_header.lower()
 
     async def handler(request: Request, exc: Exception) -> Response:
-        rid = request.scope.get("state", {}).get("request_id") or "unknown"
-        r = render(exc, request_id=rid, request_id_header=rh)
+        state = request.scope.get("state", {})
+        rid = state.get("request_id") or "unknown"
+        guarded = state.get("fancy_guard")
+        mx = guarded.limits["maxMessageLength"] if isinstance(guarded, GuardState) else DEFAULTS["maxMessageLength"]
+        r = render(exc, request_id=rid, request_id_header=rh, max_message_length=mx)
         return Response(r.payload(), status_code=r.status, headers=dict(r.headers))
 
     from starlette.exceptions import HTTPException
