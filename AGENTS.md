@@ -10,8 +10,6 @@ is, is in [README.md](./README.md). Notes for working ON this repo's code are in
 pip install fancy-http-guard
 ```
 
-- **Not published to PyPI yet** (version `0.1.0` in the repo). The command above
-  works once it is.
 - Python `>=3.11`. Zero runtime dependencies: Starlette, FastAPI and
   holy-sheet (`fancy-holy-sheet`, for workbooks) are used when present, never
   required.

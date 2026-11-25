@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "fancy-http-guard"
-version = "0.1.0"
+version = "0.2.0"
 description = "ASGI request guards for Starlette and FastAPI, checked BEFORE the body is parsed (413, nesting depth, list length, finite numbers, workbook caps), plus one error envelope with a request id on every response. Zero runtime dependencies."
 readme = "README.md"
 # Matches every other Python package in the kit.

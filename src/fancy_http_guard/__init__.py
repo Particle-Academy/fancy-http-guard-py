@@ -25,7 +25,7 @@ from .middleware import GuardMiddleware, GuardState, guard
 from .settings import DEFAULTS, MESSAGE_LENGTH_BOUND, PROFILES, settings, workbook_limits
 from .workbook import read_workbook
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
     "DEFAULTS",

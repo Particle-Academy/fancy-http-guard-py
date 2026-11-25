@@ -10,6 +10,8 @@ promising otherwise until 1.0.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-24
+
 ### Added
 
 - `maxMessageLength`, a limit setting for public error messages (CC-fancy-0063):
@@ -38,6 +40,11 @@ promising otherwise until 1.0.
   message-length rows `http/request-guards` 0089 to 0098. The table now passes
   98 rows (was 88), 31 of them render rows through FastAPI (was 21). Test-only.
 - Conformance fixtures 0.62.0: the `http/error-envelope` and `http/request-guards` rows are now pinned at fancy-conformance 0.62.0 (was 0.48.0), in both CI checkout refs and `PINNED_SUITE_VERSION`. Test-only; no runtime change, nothing to do.
+
+### Fixed
+
+- AGENTS.md no longer says the package is not published to PyPI yet: 0.1.0 has
+  been live there since 2026-11-18.
 
 ## [0.1.0] - 2026-11-18
 
