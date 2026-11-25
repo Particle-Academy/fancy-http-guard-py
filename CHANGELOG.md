@@ -26,9 +26,6 @@ promising otherwise until 1.0.
   and `install()` pass for you.
 - Tests: `tests/test_message_length.py`, the shared rows' new `failed` kind and
   `input.limits` in `tests/runner.py`, and four sabotage mutations (20 in all).
-  The shared rows (`http/request-guards` 0089 to 0098) land in fancy-conformance
-  after 0.63.0; all 98 pass here against that branch, and the pin moves when it
-  is released.
 
 ### Changed
 
@@ -36,6 +33,10 @@ promising otherwise until 1.0.
 - Sanitising is unchanged at any length: control characters are still stripped,
   a message over its limit still truncates with an ellipsis, a crash is still
   the fixed 500 and a non-public 5xx still never shows its message.
+- Conformance fixtures 0.64.0: the pin moves to fancy-conformance 0.64.0 (was
+  0.62.0), in both CI checkout refs and `PINNED_SUITE_VERSION`, for the shared
+  message-length rows `http/request-guards` 0089 to 0098. The table now passes
+  98 rows (was 88), 31 of them render rows through FastAPI (was 21). Test-only.
 - Conformance fixtures 0.62.0: the `http/error-envelope` and `http/request-guards` rows are now pinned at fancy-conformance 0.62.0 (was 0.48.0), in both CI checkout refs and `PINNED_SUITE_VERSION`. Test-only; no runtime change, nothing to do.
 
 ## [0.1.0] - 2026-11-18

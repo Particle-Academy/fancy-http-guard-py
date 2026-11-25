@@ -27,7 +27,7 @@ from fancy_http_guard.sentences import format_bytes, format_duration, sanitise
 # The tag CI checks out (.github/workflows/ci.yml). Move the two together, after
 # re-running the tables against the new checkout; test_ci_ref_is_the_pin fails
 # otherwise.
-PINNED_SUITE_VERSION = "0.62.0"
+PINNED_SUITE_VERSION = "0.64.0"
 REPO = Path(__file__).resolve().parent.parent
 
 
@@ -91,7 +91,7 @@ def test_request_guards_raw_asgi(capsys: pytest.CaptureFixture[str]) -> None:
     _show(summary, capsys)
     assert summary["failed"] == 0, [r for r in summary["results"] if r["status"] == "fail"]
     assert summary["skipped"] == 0
-    assert summary["passed"] == 88
+    assert summary["passed"] == 98
 
 
 @pytest.mark.skipif(not runner.HAVE_STARLETTE, reason="covered by the main test job; this job proves zero dependencies")
@@ -105,7 +105,7 @@ def test_request_guards_render_through_fastapi(capsys: pytest.CaptureFixture[str
     with capsys.disabled():
         print(f"\nhttp/request-guards render rows through FastAPI: {len(rows) - len(failures)} of {len(rows)} passed")
     assert not failures
-    assert len(rows) == 21
+    assert len(rows) == 31
 
 
 def test_workbook_rows_need_holy_sheet() -> None:
